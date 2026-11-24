@@ -97,10 +97,11 @@ Then restart the desktop app (`killall -9 claude-desktop`, reopen) so it loads t
 ## History
 
 Set up on 2026-11-24 in Claude's Compute project, where the plan and its test record are
-kept (`claude/strix-fricas-container-plan.md`). The image was first built from these
-files with the Dockerfile before two fixes that the next build picks up: `make check` as
-user `fricas` (as root, `files.input`'s `chmod 400` test fails), and a plain `2.6.10` SBCL
-version string. `fricas-dev-build` now also writes its closing lines to `build.log`.
+kept (`claude/strix-fricas-container-plan.md`). The first image was built before two
+Dockerfile fixes; it was rebuilt from this repository the same afternoon (FriCAS step
+145 s with `JOBS=12`), and that build reports SBCL `2.6.10` and `make check: ok` (the
+test suite now runs as user `fricas`; as root, `files.input`'s `chmod 400` test fails).
+The tool was rechecked against it for the release and the `master` dev build.
 
 ## Rules
 
