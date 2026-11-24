@@ -1,0 +1,3 @@
+build-*.log
+make-build.out
+__pycache__/

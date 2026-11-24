@@ -1,0 +1,62 @@
+#!/bin/bash
+# fricas-dev-build NAME [--activate] [--clean] [-- extra configure args]
+#
+# Builds $FRICAS_DEV/src/fricas (Bill's clone of billpage/fricas-dev) out of tree:
+#   build dir  $FRICAS_DEV/build/NAME   (log: build.log, appended)
+#   install    $FRICAS_DEV/install/NAME
+# The first run configures; later runs only `make && make install` (incremental).
+# --clean     delete build and install dirs first (reconfigure from scratch)
+# --activate  point $FRICAS_DEV/install/current at NAME (the "dev" variant)
+# JOBS=n overrides the parallel make count (default: nproc).
+set -u
+DEV=${FRICAS_DEV:-/home/fricas/dev}
+name=${1:-}
+if [[ -z $name || $name == -* || $name == */* || $name == current ]]; then
+    echo "usage: fricas-dev-build NAME [--activate] [--clean] [-- configure args]" >&2
+    exit 2
+fi
+shift
+activate=0 clean=0
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --activate) activate=1; shift ;;
+        --clean)    clean=1; shift ;;
+        --)         shift; break ;;
+        *)          echo "unknown option: $1" >&2; exit 2 ;;
+    esac
+done
+
+src=$DEV/src/fricas
+b=$DEV/build/$name
+inst=$DEV/install/$name
+if [[ ! -x $src/configure ]]; then
+    echo "no FriCAS source at $src" >&2
+    exit 2
+fi
+if [[ $clean == 1 ]]; then rm -rf "$b" "$inst"; fi
+mkdir -p "$b"
+log=$b/build.log
+
+(
+    set -e
+    cd "$b"
+    echo "=== $(date -Is) build '$name' from $(git -C "$src" rev-parse --abbrev-ref HEAD 2>/dev/null)" \
+         "@ $(git -C "$src" describe --always --dirty 2>/dev/null)"
+    if [[ ! -f config.status ]]; then
+        "$src/configure" --prefix="$inst" --with-lisp=/usr/local/bin/sbcl --enable-gmp "$@"
+    fi
+    make -j"${JOBS:-$(nproc)}"
+    make install
+) 2>&1 | tee -a "$log"
+rc=${PIPESTATUS[0]}
+
+# The closing lines go to the log too: with `docker exec -d` nobody sees stdout.
+if [[ $rc -ne 0 ]]; then
+    echo "=== $(date -Is) build '$name' FAILED (rc=$rc); see $log" | tee -a "$log" >&2
+    exit 1
+fi
+echo "=== $(date -Is) build '$name' ok: $inst/bin/fricas" | tee -a "$log"
+if [[ $activate == 1 ]]; then
+    ln -sfn "$name" "$DEV/install/current"
+    echo "=== install/current -> $name  (use: fricas-variant dev, or FRICAS_VARIANT=dev)" | tee -a "$log"
+fi

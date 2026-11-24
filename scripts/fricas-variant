@@ -1,0 +1,25 @@
+#!/bin/sh
+# fricas-variant [release|dev|<name>]
+# Without an argument: show the current choice and the dev builds.
+# With one: make it the default for `fricas` (stored in $FRICAS_DEV/variant,
+# which is on the host, so it survives container restarts).
+DEV=${FRICAS_DEV:-/home/fricas/dev}
+f=$DEV/variant
+if [ $# -eq 0 ]; then
+    echo "variant: $(cat "$f" 2>/dev/null || echo release)"
+    cur=$(readlink "$DEV/install/current" 2>/dev/null)
+    echo "dev (install/current) -> ${cur:-none}"
+    echo "builds in $DEV/install:"
+    for d in "$DEV"/install/*/; do
+        [ -x "${d}bin/fricas" ] && echo "  $(basename "$d")"
+    done
+    exit 0
+fi
+case $1 in
+    release|dev) ;;
+    *) if [ ! -x "$DEV/install/$1/bin/fricas" ]; then
+           echo "fricas-variant: no build named '$1' in $DEV/install" >&2
+           exit 2
+       fi ;;
+esac
+echo "$1" > "$f" && echo "variant: $1"

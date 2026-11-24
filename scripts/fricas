@@ -1,0 +1,22 @@
+#!/bin/sh
+# fricas: start the selected FriCAS build.
+#   release      /opt/fricas/release (baked into the image)
+#   dev          $FRICAS_DEV/install/current (set by fricas-dev-build --activate)
+#   <name>       $FRICAS_DEV/install/<name>
+# Selection: $FRICAS_VARIANT if set, else the word in $FRICAS_DEV/variant
+# (set with fricas-variant), else release. Exit 3 if the selected build is missing.
+DEV=${FRICAS_DEV:-/home/fricas/dev}
+v=${FRICAS_VARIANT:-}
+[ -z "$v" ] && [ -r "$DEV/variant" ] && v=$(cat "$DEV/variant")
+v=${v:-release}
+case $v in
+    release) p=/opt/fricas/release ;;
+    dev)     p=$DEV/install/current ;;
+    *)       p=$DEV/install/$v ;;
+esac
+exe=$p/bin/fricas
+if [ ! -x "$exe" ]; then
+    echo "fricas: variant '$v' is not built ($exe not found)" >&2
+    exit 3
+fi
+exec "$exe" "$@"
