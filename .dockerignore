@@ -1,0 +1,5 @@
+.git
+tool
+*.log
+*.out
+README.md
